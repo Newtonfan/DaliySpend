@@ -94,7 +94,7 @@ def account(user):
     return db.session.query(Account).filter_by(user_id=user.id).first()
 
 
-def make_transaction(
+def _insert_transaction(
     user: User,
     *,
     category: Category,
@@ -121,3 +121,9 @@ def make_transaction(
     db.session.add(txn)
     db.session.commit()
     return txn
+
+
+@pytest.fixture()
+def make_transaction():
+    """Factory fixture: insert a transaction directly, bypassing the HTTP layer."""
+    return _insert_transaction
