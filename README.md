@@ -4,6 +4,18 @@
 后端 Flask + SQLAlchemy，前端 Vue 3 + Vite + Naive UI + ECharts，数据库开发期用 SQLite，
 后续可平滑迁移到 Oracle。
 
+## 界面预览
+
+| 概览 | 流水 |
+| --- | --- |
+| ![概览](docs/screenshots/dashboard.png) | ![流水](docs/screenshots/transactions.png) |
+
+| 设置 | 登录 |
+| --- | --- |
+| ![设置](docs/screenshots/settings.png) | ![登录](docs/screenshots/login.png) |
+
+（截图由 `scripts\e2e_smoke.py` 用无头浏览器真实渲染生成，示例数据仅供演示。）
+
 ## 功能
 
 - **记账**：金额、日期、分类、账户、商户、备注；收支方向由分类类型自动判定
