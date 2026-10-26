@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from flask import Flask, Response, jsonify, request
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 
 from .errors_types import ApiError
@@ -25,6 +26,10 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(ApiError)
     def _handle_api_error(exc: ApiError) -> Response:
         return json_error(exc.code, exc.message, exc.status, exc.details)
+
+    @app.errorhandler(CSRFError)
+    def _handle_csrf_error(exc: CSRFError) -> Response:
+        return json_error("csrf_failed", exc.description or "CSRF 校验失败", 400)
 
     @app.errorhandler(HTTPException)
     def _handle_http_exception(exc: HTTPException) -> Response:

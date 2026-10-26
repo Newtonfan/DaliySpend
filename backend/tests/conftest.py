@@ -23,6 +23,7 @@ def app(tmp_path):
             "SQLALCHEMY_DATABASE_URI": f"sqlite:///{database_path.as_posix()}",
             "WTF_CSRF_ENABLED": False,
             "SECRET_KEY": "test-secret",
+            "SERVE_FRONTEND": False,
             "SERVER_NAME": None,
         }
     )

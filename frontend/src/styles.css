@@ -1,0 +1,44 @@
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  background: #f5f6fa;
+  color: #1f2937;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.amount-out {
+  color: #e11d48;
+  font-variant-numeric: tabular-nums;
+}
+
+.amount-in {
+  color: #059669;
+  font-variant-numeric: tabular-nums;
+}
+
+.page-section + .page-section {
+  margin-top: 16px;
+}
+
+.chart-card {
+  padding: 4px 0;
+}

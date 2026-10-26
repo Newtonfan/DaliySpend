@@ -58,6 +58,11 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     app.register_blueprint(api_bp, url_prefix="/api")
 
+    from .web import register_frontend
+
+    if app.config.get("SERVE_FRONTEND", True):
+        register_frontend(app)
+
     register_error_handlers(app)
 
     from .cli import register_cli
