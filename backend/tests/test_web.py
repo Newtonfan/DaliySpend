@@ -44,18 +44,21 @@ def test_api_paths_are_not_swallowed_by_the_spa(app, tmp_path):
 
 
 def test_missing_build_keeps_api_only_mode(tmp_path):
-    settings = create_app(
+    app = create_app(
         {
             "TESTING": True,
             "SQLALCHEMY_DATABASE_URI": f"sqlite:///{(tmp_path / 'api-only.sqlite3').as_posix()}",
             "WTF_CSRF_ENABLED": False,
+            "SERVE_FRONTEND": False,
         }
     )
-    assert isinstance(settings, Flask)
-    with settings.app_context():
+    assert isinstance(app, Flask)
+    # No build mounted, and mounting a non-existent directory is a no-op.
+    assert register_frontend(app, tmp_path / "does-not-exist") is False
+
+    with app.app_context():
         db.create_all()
-        client = settings.test_client()
+        client = app.test_client()
         response = client.get("/")
         assert response.status_code == 404
         assert client.get("/api/health").status_code == 200
-    register_frontend(settings, tmp_path / "does-not-exist")

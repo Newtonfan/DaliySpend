@@ -21,7 +21,7 @@ import { messageOf } from '@/api/client'
 import BaseChart from '@/components/BaseChart.vue'
 import TransactionDialog from '@/components/TransactionDialog.vue'
 import type { DashboardData, Transaction } from '@/types'
-import { formatYuan, lastNDaysRange, monthRange, toNumber } from '@/utils/format'
+import { formatMoney, formatYuan, lastNDaysRange, monthRange, toNumber } from '@/utils/format'
 
 type Preset = 'thisMonth' | 'lastMonth' | 'last30' | 'custom'
 
@@ -34,16 +34,20 @@ const preset = ref<Preset>('thisMonth')
 const customRange = ref<[number, number] | null>(null)
 const dialogVisible = ref(false)
 
-const range = computed(() => {
+const range = computed<{ date_from: string; date_to: string }>(() => {
   if (preset.value === 'custom' && customRange.value) {
     return {
       date_from: dayjs(customRange.value[0]).format('YYYY-MM-DD'),
       date_to: dayjs(customRange.value[1]).format('YYYY-MM-DD'),
     }
   }
-  if (preset.value === 'lastMonth') return monthRange(-1)
-  if (preset.value === 'last30') return lastNDaysRange(30)
-  return monthRange(0)
+  const preset_range =
+    preset.value === 'lastMonth'
+      ? monthRange(-1)
+      : preset.value === 'last30'
+        ? lastNDaysRange(30)
+        : monthRange(0)
+  return { date_from: preset_range.from, date_to: preset_range.to }
 })
 
 const summary = computed(() => data.value?.summary)
@@ -68,11 +72,36 @@ async function load() {
 watch(range, load)
 onMounted(load)
 
+const dailyFocus = ref<'all' | 'expense' | 'income'>('all')
+
 const dailyOption = computed<EChartsOption>(() => {
   const points = data.value?.daily ?? []
+  const series: EChartsOption['series'] = []
+  if (dailyFocus.value !== 'income') {
+    series.push({
+      name: '支出',
+      type: 'line',
+      smooth: true,
+      showSymbol: false,
+      areaStyle: { opacity: 0.14 },
+      itemStyle: { color: '#e11d48' },
+      data: points.map((point) => toNumber(point.expense)),
+    })
+  }
+  if (dailyFocus.value !== 'expense') {
+    series.push({
+      name: '收入',
+      type: 'line',
+      smooth: true,
+      showSymbol: false,
+      areaStyle: { opacity: 0.08 },
+      itemStyle: { color: '#059669' },
+      data: points.map((point) => toNumber(point.income)),
+    })
+  }
   return {
-    tooltip: { trigger: 'axis', valueFormatter: (value) => `¥${value}` },
-    legend: { data: ['支出', '收入'], right: 0, top: 0 },
+    tooltip: { trigger: 'axis', valueFormatter: (value) => `¥${formatMoney(Number(value))}` },
+    legend: { data: series.map((item) => (item as { name: string }).name), right: 0, top: 0 },
     grid: { left: 8, right: 16, top: 44, bottom: 8, containLabel: true },
     xAxis: {
       type: 'category',
@@ -81,26 +110,7 @@ const dailyOption = computed<EChartsOption>(() => {
       axisTick: { show: false },
     },
     yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
-    series: [
-      {
-        name: '支出',
-        type: 'line',
-        smooth: true,
-        showSymbol: false,
-        areaStyle: { opacity: 0.14 },
-        itemStyle: { color: '#e11d48' },
-        data: points.map((point) => toNumber(point.expense)),
-      },
-      {
-        name: '收入',
-        type: 'line',
-        smooth: true,
-        showSymbol: false,
-        areaStyle: { opacity: 0.08 },
-        itemStyle: { color: '#059669' },
-        data: points.map((point) => toNumber(point.income)),
-      },
-    ],
+    series,
   }
 })
 
@@ -163,8 +173,12 @@ const monthlyOption = computed<EChartsOption>(() => {
 const accountOption = computed<EChartsOption>(() => {
   const items = [...(data.value?.by_account ?? [])].reverse()
   return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, valueFormatter: (value) => `¥${value}` },
-    grid: { left: 8, right: 32, top: 16, bottom: 8, containLabel: true },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      valueFormatter: (value) => `¥${formatMoney(Number(value))}`,
+    },
+    grid: { left: 8, right: 48, top: 16, bottom: 8, containLabel: true },
     xAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed' } } },
     yAxis: { type: 'category', data: items.map((item) => item.name), axisTick: { show: false } },
     series: [
@@ -172,7 +186,11 @@ const accountOption = computed<EChartsOption>(() => {
         type: 'bar',
         barMaxWidth: 18,
         itemStyle: { color: '#6366f1', borderRadius: [0, 4, 4, 0] },
-        label: { show: true, position: 'right', formatter: (params) => `¥${params.value}` },
+        label: {
+          show: true,
+          position: 'right',
+          formatter: (params) => `¥${formatMoney(Number(params.value))}`,
+        },
         data: items.map((item) => toNumber(item.amount)),
       },
     ],
@@ -247,6 +265,13 @@ function onSaved() {
     <n-grid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive class="charts">
       <n-gi span="2 m:1">
         <n-card title="每日支出趋势" size="small">
+          <template #header-extra>
+            <n-radio-group v-model:value="dailyFocus" size="small">
+              <n-radio-button value="all">全部</n-radio-button>
+              <n-radio-button value="expense">只看支出</n-radio-button>
+              <n-radio-button value="income">只看收入</n-radio-button>
+            </n-radio-group>
+          </template>
           <n-skeleton v-if="loading" height="280px" />
           <n-empty v-else-if="!hasData" description="这个时间段还没有记录" style="height: 280px" />
           <BaseChart v-else :option="dailyOption" height="280px" />
