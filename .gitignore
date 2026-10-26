@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# Local (sandbox) dependency + tool directories
+.pylibs/
+.venv/
+.tools/
+.devshim/__pycache__/
+.tmp/
+
+# Runtime data
+instance/
+*.sqlite3
+*.sqlite3-journal
+
+# Secrets / local config
+.env
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.log
+
+# Editors
+.vscode/
+.idea/
+.DS_Store
+
+# Sandbox ACL repair artifacts
+.acl-backup/
