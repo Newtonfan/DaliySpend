@@ -134,7 +134,21 @@ Flask 直接托管 `frontend\dist`，访问 <http://127.0.0.1:8000> 即可，无
 
 ### 1. 建应用用户（一次）
 
-用 SYSTEM/SYS 连到 PDB 后执行 `scripts\setup-oracle.sql`（先改里面的口令）：
+推荐用脚本（thin 驱动直连，**不需要 sqlplus**，口令只从终端输入、不进命令行参数）：
+
+```powershell
+scripts\setup-oracle-user.ps1            # 输入 SYSTEM 口令，自动建 dailyspend 与 dailyspend_test
+scripts\setup-oracle-user.ps1 -WriteEnv  # 顺便把 DS_DATABASE_URL 追加到 .env
+```
+
+它会：查 `all_users` 决定 `CREATE` 还是 `ALTER`（可重复执行）、授
+`CREATE SESSION/TABLE/SEQUENCE/TRIGGER` + `QUOTA UNLIMITED ON USERS`、
+用两个新账号各连一次做验证，并打印两条连接串（测试用的那条给实库用例）。
+
+> 为什么不用 `sqlplus / as sysdba`：本机 `ORA_DBA` 组虽然包含当前账号，但服务端返回
+> `ORA-12241`（OracleServiceFREE 的服务用户未授权），要走通得改 Oracle 服务配置。
+
+如果你更喜欢 SQL*Plus，也可以手工执行 `scripts\setup-oracle.sql`（先改里面的口令）：
 
 ```powershell
 sqlplus system@//localhost:1521/FREEPDB1 @scripts\setup-oracle.sql
