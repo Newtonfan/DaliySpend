@@ -8,6 +8,7 @@ from flask import Flask
 
 from . import db as _db_module  # noqa: F401  (registers the SQLite pragma listener)
 from .config import INSTANCE_DIR, get_settings
+from .db import configure_driver_defaults, engine_options
 from .errors import json_error, register_error_handlers
 from .extensions import csrf, db, login_manager, migrate
 
@@ -15,13 +16,16 @@ from .extensions import csrf, db, login_manager, migrate
 def create_app(test_config: dict | None = None) -> Flask:
     settings = get_settings()
     INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+    configure_driver_defaults()
+
+    database_url = settings.resolve_database_url()
 
     app = Flask(__name__)
     app.config.update(
         SECRET_KEY=settings.secret_key,
-        SQLALCHEMY_DATABASE_URI=settings.resolve_database_url(),
+        SQLALCHEMY_DATABASE_URI=database_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        SQLALCHEMY_ENGINE_OPTIONS={"pool_pre_ping": True},
+        SQLALCHEMY_ENGINE_OPTIONS=engine_options(database_url),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=settings.session_cookie_secure,

@@ -15,6 +15,7 @@ from ..money import to_cents
 from ..schemas import TransactionCreate, TransactionQuery, TransactionUpdate, parse_payload, parse_query
 from ..utils.time import now_local, today_local
 from .helpers import (
+    blank_to_none,
     commit,
     current_user_id,
     get_account,
@@ -114,8 +115,8 @@ def create_transaction():
         direction="in" if category.kind == "income" else "out",
         category_id=category.id,
         account_id=account.id if account else None,
-        payee=payload.payee or None,
-        note=payload.note or None,
+        payee=blank_to_none(payload.payee),
+        note=blank_to_none(payload.note),
     )
     db.session.add(transaction)
     commit("流水保存失败")
@@ -162,9 +163,9 @@ def update_transaction(transaction_id: int):
         data.pop("occurred_at", None)
 
     if "payee" in data:
-        transaction.payee = data.pop("payee") or None
+        transaction.payee = blank_to_none(data.pop("payee"))
     if "note" in data:
-        transaction.note = data.pop("note") or None
+        transaction.note = blank_to_none(data.pop("note"))
 
     commit("流水保存失败")
     return jsonify({"transaction": transaction.to_dict()})
@@ -177,3 +178,4 @@ def delete_transaction(transaction_id: int):
     transaction.deleted_at = now_local()
     db.session.commit()
     return "", 204
+

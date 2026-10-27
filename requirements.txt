@@ -15,3 +15,5 @@ pytest>=8.2,<9
 pytest-cov>=5.0,<7
 # Windows has no system tz database; ZoneInfo needs this package
 tzdata>=2024.1
+# Oracle driver (thin mode, no Instant Client needed)
+oracledb>=2.5,<4

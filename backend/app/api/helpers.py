@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from flask import request
 from flask_login import current_user
@@ -11,6 +11,18 @@ from sqlalchemy.exc import IntegrityError
 from ..errors_types import ApiError, Conflict, NotFound
 from ..extensions import db
 from ..models import Account, Category, Transaction
+
+
+def blank_to_none(value: Optional[str]) -> Optional[str]:
+    """Trim and turn empty strings into NULL.
+
+    Oracle stores ``''`` as NULL, so normalising here keeps SQLite and Oracle
+    responses identical.
+    """
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
 
 
 def json_body() -> Any:

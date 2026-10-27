@@ -10,7 +10,7 @@ from ..errors_types import Conflict
 from ..extensions import db
 from ..models import Category, Transaction
 from ..schemas import CategoryCreate, CategoryUpdate, parse_payload
-from .helpers import commit, current_user_id, get_category, json_body
+from .helpers import blank_to_none, commit, current_user_id, get_category, json_body
 
 bp = Blueprint("categories", __name__, url_prefix="/categories")
 
@@ -43,8 +43,8 @@ def create_category():
         user_id=current_user_id(),
         name=payload.name,
         kind=payload.kind,
-        icon=payload.icon,
-        color=payload.color,
+        icon=blank_to_none(payload.icon),
+        color=blank_to_none(payload.color),
         sort_order=payload.sort_order,
     )
     db.session.add(category)
@@ -60,7 +60,7 @@ def update_category(category_id: int):
     data = payload.model_dump(exclude_unset=True)
 
     for field, value in data.items():
-        setattr(category, field, value)
+        setattr(category, field, blank_to_none(value) if field in {'icon', 'color'} else value)
     commit("同类型下已存在同名分类")
     return jsonify({"category": category.to_dict()})
 
@@ -81,3 +81,4 @@ def delete_category(category_id: int):
     db.session.delete(category)
     db.session.commit()
     return "", 204
+
