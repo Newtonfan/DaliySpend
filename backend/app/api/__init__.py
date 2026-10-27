@@ -1,4 +1,4 @@
-﻿"""API blueprint aggregation."""
+"""API blueprint aggregation."""
 
 from __future__ import annotations
 

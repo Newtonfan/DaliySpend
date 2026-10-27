@@ -13,7 +13,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Url,
     [string]$TestUrl = '',
-    [switch]$IncludeBrowser
+    [switch]$IncludeBrowser,
+    [switch]$SkipSelfTest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,6 +41,21 @@ function Invoke-Python {
         Pop-Location
     }
     if ($code -ne 0) { throw ("python {0} failed with {1}" -f ($Arguments -join ' '), $code) }
+}
+
+if (-not $SkipSelfTest) {
+    # Pre-flight: run the Oracle test bodies against a throw-away SQLite file so a
+    # broken test is reported now instead of on the day credentials show up.
+    Write-Output '=== 0/4 self-test: live test bodies against SQLite ==='
+    $selfTestDb = (Join-Path $env:TMP 'live_selftest.sqlite3') -replace '\\', '/'
+    Remove-Item (Join-Path $env:TMP 'live_selftest.sqlite3') -ErrorAction SilentlyContinue
+    $env:DS_ORACLE_TEST_URL = 'sqlite:///' + $selfTestDb
+    try {
+        Invoke-Python @('-m', 'pytest', 'tests\test_oracle_live.py', '-q', '--tb=short')
+    }
+    finally {
+        Remove-Item Env:DS_ORACLE_TEST_URL -ErrorAction SilentlyContinue
+    }
 }
 
 Write-Output '=== 1/4 flask db upgrade (application schema) ==='

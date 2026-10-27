@@ -1,4 +1,4 @@
-﻿"""Oracle-dialect checks that need no database.
+"""Oracle-dialect checks that need no database.
 
 The project ships on SQLite during development and on Oracle in production.  A
 SQLite-only test suite would happily accept DDL that Oracle rejects (for example

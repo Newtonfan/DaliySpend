@@ -1,4 +1,4 @@
-﻿"""Statement import tests (WeChat Pay / Alipay CSV)."""
+"""Statement import tests (WeChat Pay / Alipay CSV)."""
 
 from __future__ import annotations
 

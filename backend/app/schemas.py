@@ -1,4 +1,4 @@
-﻿"""Pydantic schemas for request payloads and query strings.
+"""Pydantic schemas for request payloads and query strings.
 
 Validation failures are converted into :class:`ValidationFailed` so the API
 always answers with the same JSON error envelope.

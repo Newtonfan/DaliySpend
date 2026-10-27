@@ -1,4 +1,4 @@
-﻿"""Transaction (expense / income) CRUD with filtering and pagination."""
+"""Transaction (expense / income) CRUD with filtering and pagination."""
 
 from __future__ import annotations
 

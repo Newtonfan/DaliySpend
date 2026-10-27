@@ -177,9 +177,13 @@ scripts\oracle_e2e.ps1 `
 模型或迁移改动后跑 `scripts\render-oracle-ddl.ps1` 重新生成，`test_oracle_dialect.py` 里有一条
 快照同步测试，忘了重新生成会失败。
 `-TestUrl` 指向一个**一次性 schema**：`backend\tests\test_oracle_live.py` 会 `DROP/CREATE`，
-在里面验证 IDENTITY 主键、`VARCHAR2(n CHAR)` 存 40 个汉字、CLOB 往返、外部单号唯一约束、
-统计聚合与 CSV 导出的数字、以及完整的 HTTP 往返。没设 `DS_ORACLE_TEST_URL` 时这 6 条用例显示为
-`skipped`，不会假装通过。
+里面共 10 条用例，覆盖 IDENTITY 主键、`VARCHAR2(n CHAR)` 存 40 个汉字、CLOB 往返、
+外部单号唯一约束、统计聚合与 CSV 导出的数字、完整 HTTP 往返，以及分类/账户 CRUD、
+CSV 导入幂等、预算进度、回收站恢复与清除。没设 `DS_ORACLE_TEST_URL` 时这些用例显示为 `skipped`，
+不会假装通过。
+
+脚本在碰 Oracle 之前会先做一次**自检**（step 0）：把同一批用例跑在临时 SQLite 上，
+确认测试本身没写错——毕竟测试写错只会在真正接 Oracle 那天才暴露。加 `-SkipSelfTest` 可跳过。
 
 ### 当前状态（本机实测）
 

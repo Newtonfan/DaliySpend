@@ -14,13 +14,16 @@ What it proves on the real server:
 * ``note`` (``Text`` -> ``CLOB``) round-trips as ``str``, not a LOB handle;
 * ``(user_id, external_id)`` uniqueness is enforced by the database;
 * the aggregation helpers and CSV export produce the same numbers as SQLite;
-* the HTTP API works end to end against Oracle.
+* the HTTP API works end to end against Oracle, including CSV import,
+  budgets and the recycle bin.
 """
 
 from __future__ import annotations
 
+import io
 import os
 from datetime import date
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -41,6 +44,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 PASSWORD = "oracle-test-pass"
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(scope="module")
@@ -229,3 +233,116 @@ def test_http_api_round_trip(oracle_app):
     assert csv_response.status_code == 200
     body = csv_response.get_data(as_text=True)
     assert "Oracle 测试商户" in body
+
+
+@pytest.fixture()
+def api_client(oracle_app):
+    """A signed-in test client on Oracle for the feature-level tests."""
+    client = oracle_app.test_client()
+    email = f"oracle-api-{os.urandom(4).hex()}@example.com"
+    response = client.post(
+        "/api/auth/register",
+        json={"email": email, "password": PASSWORD, "display_name": "Oracle API"},
+    )
+    assert response.status_code == 201, response.get_json()
+    return client
+
+
+def test_reference_data_crud_on_oracle(api_client):
+    created = api_client.post(
+        "/api/categories", json={"name": "Oracle 分类", "kind": "expense", "icon": "🧪"}
+    )
+    assert created.status_code == 201, created.get_json()
+    category_id = created.get_json()["category"]["id"]
+
+    updated = api_client.put(f"/api/categories/{category_id}", json={"name": "改名了"})
+    assert updated.status_code == 200
+    assert updated.get_json()["category"]["name"] == "改名了"
+
+    duplicate = api_client.post(
+        "/api/categories", json={"name": "改名了", "kind": "expense"}
+    )
+    assert duplicate.status_code == 409
+
+    account = api_client.post(
+        "/api/accounts", json={"name": "Oracle 账户", "type": "bank", "initial_balance": "88.8"}
+    )
+    assert account.status_code == 201
+    assert account.get_json()["account"]["initial_balance"] == "88.80"
+
+    assert api_client.delete(f"/api/categories/{category_id}").status_code == 204
+
+
+def test_csv_import_is_idempotent_on_oracle(api_client):
+    raw = (FIXTURES / "wechat_statement.csv").read_bytes()
+
+    def upload(dry_run: bool):
+        return api_client.post(
+            "/api/imports/csv",
+            data={
+                "file": (io.BytesIO(raw), "wechat_statement.csv"),
+                "dry_run": "true" if dry_run else "false",
+            },
+            content_type="multipart/form-data",
+        )
+
+    preview = upload(True)
+    assert preview.status_code == 200, preview.get_json()
+    payload = preview.get_json()
+    assert payload["source"] == "wechat"
+    assert payload["ready"] == 5
+    assert payload["skipped"] == 2
+
+    first = upload(False).get_json()
+    assert first["imported"] == 5
+
+    second = upload(False).get_json()
+    assert second["imported"] == 0
+    assert second["duplicates"] == 5
+
+    imported = api_client.get("/api/transactions?source=wechat").get_json()
+    assert imported["total"] == 5
+    # CLOB note survived the round trip through Oracle.
+    notes = {item["note"] for item in imported["items"] if item["note"]}
+    assert any("拿铁" in note for note in notes)
+
+
+def test_budget_progress_on_oracle(api_client):
+    categories = api_client.get("/api/categories?kind=expense").get_json()["items"]
+    category_id = categories[0]["id"]
+
+    created = api_client.post(
+        "/api/transactions",
+        json={"amount": "120.00", "category_id": category_id, "biz_date": "2026-07-05"},
+    )
+    assert created.status_code == 201
+
+    budget = api_client.put(
+        "/api/budgets", json={"month": "2026-07", "amount": "100"}
+    ).get_json()
+    assert budget["status"]["spent"] == "120.00"
+    assert budget["status"]["total"]["over"] is True
+    assert budget["status"]["total"]["percent"] == 120.0
+
+    category_budget = api_client.put(
+        "/api/budgets", json={"month": "2026-07", "amount": "500", "category_id": category_id}
+    ).get_json()
+    assert category_budget["status"]["categories"][0]["remaining"] == "380.00"
+
+
+def test_recycle_bin_on_oracle(api_client):
+    categories = api_client.get("/api/categories?kind=expense").get_json()["items"]
+    created = api_client.post(
+        "/api/transactions",
+        json={"amount": "9.90", "category_id": categories[0]["id"], "payee": "回收站测试"},
+    ).get_json()["transaction"]
+
+    assert api_client.delete(f"/api/transactions/{created['id']}").status_code == 204
+    trash = api_client.get("/api/transactions/trash").get_json()
+    assert trash["total"] == 1
+
+    assert api_client.post(f"/api/transactions/{created['id']}/restore").status_code == 200
+    assert api_client.get("/api/transactions/trash").get_json()["total"] == 0
+
+    api_client.delete(f"/api/transactions/{created['id']}")
+    assert api_client.delete(f"/api/transactions/{created['id']}/purge").status_code == 204
