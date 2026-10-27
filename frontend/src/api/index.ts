@@ -1,6 +1,7 @@
 import type {
   Account,
   Category,
+  BudgetStatus,
   DashboardData,
   ImportResult,
   Page,
@@ -121,6 +122,24 @@ export const statsApi = {
   async summary(params: DashboardParams = {}): Promise<Summary> {
     const { data } = await http.get<Summary>('/stats/summary', { params })
     return data
+  },
+}
+
+export const budgetsApi = {
+  async status(month?: string): Promise<BudgetStatus> {
+    const { data } = await http.get<BudgetStatus>('/budgets', { params: month ? { month } : undefined })
+    return data
+  },
+  async set(month: string, amount: string, categoryId?: number | null): Promise<BudgetStatus> {
+    const { data } = await http.put<{ budget: unknown; status: BudgetStatus }>('/budgets', {
+      month,
+      amount,
+      category_id: categoryId ?? null,
+    })
+    return data.status
+  },
+  async remove(id: number): Promise<void> {
+    await http.delete('/budgets/' + id)
   },
 }
 

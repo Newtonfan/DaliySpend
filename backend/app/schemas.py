@@ -191,3 +191,29 @@ class StatsQuery(BaseModel):
     date_to: date | None = None
     direction: Direction | None = "out"
     months: int = Field(default=6, ge=1, le=36)
+
+
+# ------------------------------------------------------------------------ budget
+
+
+class BudgetUpsert(Payload):
+    """A monthly cap; ``category_id`` omitted/null means the overall budget."""
+
+    month: date
+    category_id: int | None = None
+    amount: AmountIn
+
+    @field_validator("month", mode="before")
+    @classmethod
+    def _normalise_month(cls, value):
+        if isinstance(value, datetime):
+            value = value.date()
+        if isinstance(value, date):
+            return value.replace(day=1)
+        text = str(value).strip()
+        try:
+            if len(text) == 7:
+                return date.fromisoformat(f"{text}-01")
+            return date.fromisoformat(text).replace(day=1)
+        except ValueError as exc:
+            raise ValueError("月份格式应为 YYYY-MM") from exc

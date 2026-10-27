@@ -162,6 +162,46 @@ class Account(TimestampMixin, db.Model):
         }
 
 
+class Budget(TimestampMixin, db.Model):
+    """A monthly spending cap, either overall (``category_id`` NULL) or per category.
+
+    ``month`` holds the first day of the month so range queries stay plain date
+    comparisons on both SQLite and Oracle.
+    """
+
+    __tablename__ = "budgets"
+    __table_args__ = (
+        CheckConstraint("amount_cents > 0", name="ck_budget_amount_positive"),
+        UniqueConstraint("user_id", "month", "category_id", name="uq_budget_scope"),
+        Index("ix_budget_user_month", "user_id", "month"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, Identity(always=False), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    month: Mapped[date] = mapped_column(Date, nullable=False)
+    category_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("categories.id", ondelete="CASCADE"), nullable=True
+    )
+    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    category: Mapped[Optional["Category"]] = relationship(lazy="joined")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "month": f"{self.month.year:04d}-{self.month.month:02d}",
+            "amount": from_cents(self.amount_cents),
+            "category_id": self.category_id,
+            "category": (
+                {"id": self.category.id, "name": self.category.name, "icon": self.category.icon}
+                if self.category
+                else None
+            ),
+        }
+
+
 class Transaction(TimestampMixin, db.Model):
     __tablename__ = "transactions"
     __table_args__ = (

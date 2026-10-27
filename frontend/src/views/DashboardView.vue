@@ -6,6 +6,7 @@ import {
   NEmpty,
   NGi,
   NGrid,
+  NProgress,
   NRadioButton,
   NRadioGroup,
   NSkeleton,
@@ -16,11 +17,11 @@ import {
 import type { EChartsOption } from 'echarts'
 import dayjs from 'dayjs'
 import { computed, onMounted, ref, watch } from 'vue'
-import { statsApi, transactionsApi } from '@/api'
+import { budgetsApi, statsApi, transactionsApi } from '@/api'
 import { messageOf } from '@/api/client'
 import BaseChart from '@/components/BaseChart.vue'
 import TransactionDialog from '@/components/TransactionDialog.vue'
-import type { DashboardData, Transaction } from '@/types'
+import type { BudgetStatus, DashboardData, Transaction } from '@/types'
 import { formatMoney, formatYuan, lastNDaysRange, monthRange, toNumber } from '@/utils/format'
 
 type Preset = 'thisMonth' | 'lastMonth' | 'last30' | 'custom'
@@ -33,6 +34,7 @@ const recent = ref<Transaction[]>([])
 const preset = ref<Preset>('thisMonth')
 const customRange = ref<[number, number] | null>(null)
 const dialogVisible = ref(false)
+const budget = ref<BudgetStatus | null>(null)
 
 const range = computed<{ date_from: string; date_to: string }>(() => {
   if (preset.value === 'custom' && customRange.value) {
@@ -53,15 +55,27 @@ const range = computed<{ date_from: string; date_to: string }>(() => {
 const summary = computed(() => data.value?.summary)
 const hasData = computed(() => (summary.value?.count ?? 0) > 0)
 
+const budgetPercent = computed(() => Math.min(100, Math.round(budget.value?.total?.percent ?? 0)))
+const budgetRemaining = computed(() => {
+  const remaining = toNumber(budget.value?.total?.remaining ?? '0')
+  return remaining >= 0
+    ? `还剩 ${formatYuan(budget.value?.total?.remaining ?? '0')}`
+    : `超支 ${formatYuan(Math.abs(remaining).toFixed(2))}`
+})
+const overCategories = computed(() => (budget.value?.categories ?? []).filter((item) => item.over))
+
 async function load() {
   loading.value = true
   try {
-    const [dashboard, page] = await Promise.all([
+    const month = dayjs(range.value.date_from).format('YYYY-MM')
+    const [dashboard, page, budgetStatus] = await Promise.all([
       statsApi.dashboard({ ...range.value, months: 6 }),
       transactionsApi.list({ ...range.value, page_size: 6 }),
+      budgetsApi.status(month),
     ])
     data.value = dashboard
     recent.value = page.items
+    budget.value = budgetStatus
   } catch (error) {
     message.error(messageOf(error))
   } finally {
@@ -262,6 +276,43 @@ function onSaved() {
       </n-gi>
     </n-grid>
 
+    <n-card size="small" class="budget-card">
+      <template #header>
+        <n-space align="center" :size="8">
+          <span>本月预算</span>
+          <n-tag v-if="budget?.over_budget" type="error" size="small" :bordered="false">超支</n-tag>
+        </n-space>
+      </template>
+      <template #header-extra>
+        <n-button text type="primary" size="small" @click="$router.push('/budgets')">管理预算</n-button>
+      </template>
+
+      <n-skeleton v-if="loading" text :repeat="2" />
+      <template v-else-if="budget?.total">
+        <div class="budget-head">
+          <span class="budget-left">{{ formatYuan(budget.total.spent) }} / {{ formatYuan(budget.total.amount) }}</span>
+          <span class="budget-right">{{ budgetRemaining }}</span>
+        </div>
+        <n-progress
+          type="line"
+          :percentage="budgetPercent"
+          :status="budget.total.over ? 'error' : budget.total.percent >= 80 ? 'warning' : 'success'"
+          :height="10"
+          :show-indicator="false"
+        />
+        <div v-if="overCategories.length" class="over-list">
+          <span v-for="item in overCategories" :key="item.id" class="over-item">
+            {{ item.category?.icon ?? '📁' }} {{ item.category?.name }} 超支
+            {{ formatYuan(Math.abs(toNumber(item.remaining)).toFixed(2)) }}
+          </span>
+        </div>
+      </template>
+      <div v-else class="budget-empty">
+        还没有设置本月预算，设一个上限就能在这里看到进度与超支提醒。
+        <n-button text type="primary" size="small" @click="$router.push('/budgets')">去设置</n-button>
+      </div>
+    </n-card>
+
     <n-grid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive class="charts">
       <n-gi span="2 m:1">
         <n-card title="每日支出趋势" size="small">
@@ -382,6 +433,48 @@ function onSaved() {
 
 .recent {
   margin-top: 16px;
+}
+
+.budget-card {
+  margin-top: 16px;
+}
+
+.budget-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.budget-left {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-right {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.budget-empty {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.over-list {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.over-item {
+  font-size: 12px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 6px;
+  padding: 2px 8px;
 }
 
 .recent-list {

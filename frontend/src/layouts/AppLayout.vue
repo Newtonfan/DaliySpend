@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { NAvatar, NButton, NDropdown, NLayout, NLayoutContent, NLayoutHeader, NMenu, NSpace } from 'naive-ui'
 import { computed, h } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -11,6 +11,7 @@ const auth = useAuthStore()
 const menuOptions = [
   { label: () => h(RouterLink, { to: '/' }, { default: () => '概览' }), key: 'dashboard' },
   { label: () => h(RouterLink, { to: '/transactions' }, { default: () => '流水' }), key: 'transactions' },
+  { label: () => h(RouterLink, { to: '/budgets' }, { default: () => '预算' }), key: 'budgets' },
   { label: () => h(RouterLink, { to: '/import' }, { default: () => '导入' }), key: 'import' },
   { label: () => h(RouterLink, { to: '/settings' }, { default: () => '设置' }), key: 'settings' },
 ]

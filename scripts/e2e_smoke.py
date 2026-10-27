@@ -349,6 +349,22 @@ def main() -> int:
         )
         check("daily trend filled", len(dashboard["daily"]) >= 1, f"{len(dashboard['daily'])} points")
 
+        month = date.today().strftime("%Y-%m")
+        budget = http.request(
+            "PUT", "/api/budgets", {"month": month, "amount": "1000"}
+        ).json()
+        check(
+            "set monthly budget",
+            budget["status"]["total"]["amount"] == "1000.00",
+            f"budget={budget['status']['total']['amount']}",
+        )
+        budget_status = http.request("GET", "/api/budgets").json()
+        check(
+            "budget tracks spending",
+            budget_status["has_budget"] and float(budget_status["spent"]) > 0,
+            f"spent={budget_status['spent']}",
+        )
+
         csv_status, csv_body, csv_headers = http.request(
             "GET", "/api/exports/transactions.csv?date_from=1900-01-01", raw=True
         )
@@ -388,6 +404,7 @@ def main() -> int:
                 ("login", f"{BASE}/login"),
                 ("dashboard", f"{BASE}/__e2e/login"),
                 ("transactions", f"{BASE}/__e2e/login?next=/transactions"),
+                ("budgets", f"{BASE}/__e2e/login?next=/budgets"),
                 ("import", f"{BASE}/__e2e/login?next=/import"),
                 ("settings", f"{BASE}/__e2e/login?next=/settings"),
             ]

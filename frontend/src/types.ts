@@ -172,3 +172,24 @@ export interface ImportResult {
   sample: ImportSampleRow[]
   imported: number | null
 }
+
+export interface BudgetProgress {
+  id: number
+  month: string
+  amount: string
+  category_id: number | null
+  category: { id: number; name: string; icon: string | null } | null
+  spent: string
+  remaining: string
+  percent: number
+  over: boolean
+}
+
+export interface BudgetStatus {
+  month: string
+  spent: string
+  total: BudgetProgress | null
+  categories: BudgetProgress[]
+  has_budget: boolean
+  over_budget: boolean
+}

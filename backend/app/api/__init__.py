@@ -1,4 +1,4 @@
-"""API blueprint aggregation."""
+﻿"""API blueprint aggregation."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from flask import Blueprint
 
 from .accounts import bp as accounts_bp
 from .auth import bp as auth_bp
+from .budgets import bp as budgets_bp
 from .categories import bp as categories_bp
 from .exports import bp as exports_bp
 from .health import bp as health_bp
@@ -22,5 +23,6 @@ api_bp.register_blueprint(transactions_bp)
 api_bp.register_blueprint(stats_bp)
 api_bp.register_blueprint(exports_bp)
 api_bp.register_blueprint(imports_bp)
+api_bp.register_blueprint(budgets_bp)
 
 __all__ = ["api_bp"]

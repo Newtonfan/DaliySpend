@@ -27,6 +27,12 @@ const router = createRouter({
           meta: { title: '流水' },
         },
         {
+          path: 'budgets',
+          name: 'budgets',
+          component: () => import('@/views/BudgetsView.vue'),
+          meta: { title: '预算' },
+        },
+        {
           path: 'import',
           name: 'import',
           component: () => import('@/views/ImportView.vue'),
