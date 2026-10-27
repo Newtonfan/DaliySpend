@@ -65,18 +65,34 @@ def build_app():
     from app.utils.time import add_months, month_start, now_local, today_local
 
     TMP.mkdir(parents=True, exist_ok=True)
-    if DB_PATH.exists():
-        DB_PATH.unlink()
+
+    # ``E2E_DATABASE_URL`` lets the same smoke test run against Oracle.  It is
+    # destructive (DROP/CREATE), so it needs an explicit opt-in as well.
+    external_url = os.environ.get("E2E_DATABASE_URL")
+    if external_url:
+        if os.environ.get("E2E_ALLOW_DESTRUCTIVE") != "1":
+            raise SystemExit(
+                "E2E_DATABASE_URL is set but E2E_ALLOW_DESTRUCTIVE != 1: "
+                "refusing to drop and recreate tables."
+            )
+        database_url = external_url
+        print(f"[e2e] target database: {external_url.split('@')[-1]} (destructive)")
+    else:
+        if DB_PATH.exists():
+            DB_PATH.unlink()
+        database_url = f"sqlite:///{DB_PATH.as_posix()}"
 
     app = create_app(
         {
-            "SQLALCHEMY_DATABASE_URI": f"sqlite:///{DB_PATH.as_posix()}",
+            "SQLALCHEMY_DATABASE_URI": database_url,
             "SECRET_KEY": "e2e-secret",
             "SERVE_FRONTEND": True,
         }
     )
 
     with app.app_context():
+        if external_url:
+            db.drop_all()
         db.create_all()
         user = User(email=EMAIL, display_name="测试用户")
         user.set_password(PASSWORD)

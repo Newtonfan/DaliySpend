@@ -9,6 +9,18 @@ from sqlalchemy.engine import Engine
 
 from .extensions import db
 
+#: DBAPI module roots that mean "we are talking to Oracle".
+ORACLE_DRIVERS = ("oracledb", "cx_Oracle")
+
+#: Session settings applied to every Oracle connection.
+ORACLE_SESSION_SETTINGS = (
+    # VARCHAR2 lengths are then counted in characters, matching `VARCHAR2(n CHAR)`
+    # in the generated DDL and any hand-written `ALTER TABLE`.
+    "ALTER SESSION SET NLS_LENGTH_SEMANTICS = 'CHAR'",
+    "ALTER SESSION SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS'",
+    "ALTER SESSION SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF'",
+)
+
 
 @event.listens_for(Engine, "connect")
 def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
@@ -16,6 +28,20 @@ def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record) -> None:
     if isinstance(dbapi_connection, sqlite3.Connection):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
+@event.listens_for(Engine, "connect")
+def _configure_oracle_session(dbapi_connection, _connection_record) -> None:
+    """Pin NLS settings so behaviour never depends on the server's defaults."""
+    module_root = type(dbapi_connection).__module__.split(".")[0]
+    if module_root not in ORACLE_DRIVERS:
+        return
+    cursor = dbapi_connection.cursor()
+    try:
+        for statement in ORACLE_SESSION_SETTINGS:
+            cursor.execute(statement)
+    finally:
         cursor.close()
 
 
