@@ -14,8 +14,8 @@
 --   scripts\dev.ps1 -m flask --app wsgi:app db upgrade
 
 -- The app talks to its own schema, never to SYSTEM/SYS.
--- Replace the password before running this file.
-CREATE USER dailyspend IDENTIFIED BY "DailySpend_2026!";
+-- Replace CHANGE_ME before running this file (it is a placeholder, not a secret).
+CREATE USER dailyspend IDENTIFIED BY "CHANGE_ME_before_running";
 
 -- Only what the application actually needs.
 GRANT CREATE SESSION TO dailyspend;
