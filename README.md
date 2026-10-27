@@ -1,4 +1,4 @@
-# 每日账本 · DailySpend
+﻿# 每日账本 · DailySpend
 
 一个自用的个人记账网站：记录每天花了多少钱、花在哪，并用图表回答「这个月的钱去哪了」。
 后端 Flask + SQLAlchemy，前端 Vue 3 + Vite + Naive UI + ECharts，数据库开发期用 SQLite，
@@ -172,6 +172,10 @@ scripts\oracle_e2e.ps1 `
   -IncludeBrowser
 ```
 
+**`docs/oracle-schema.sql`** 是 Alembic 离线模式渲染出来的完整 Oracle 建表脚本（6 张表、5 个 IDENTITY、
+14 处 `VARCHAR2(n CHAR)`），可以直接用 SQL*Plus 执行，也是审阅 DDL 的最快入口；
+模型或迁移改动后跑 `scripts\render-oracle-ddl.ps1` 重新生成，`test_oracle_dialect.py` 里有一条
+快照同步测试，忘了重新生成会失败。
 `-TestUrl` 指向一个**一次性 schema**：`backend\tests\test_oracle_live.py` 会 `DROP/CREATE`，
 在里面验证 IDENTITY 主键、`VARCHAR2(n CHAR)` 存 40 个汉字、CLOB 往返、外部单号唯一约束、
 统计聚合与 CSV 导出的数字、以及完整的 HTTP 往返。没设 `DS_ORACLE_TEST_URL` 时这 6 条用例显示为
