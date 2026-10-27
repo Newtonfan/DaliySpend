@@ -188,6 +188,39 @@ class Http:
             return status, body, response_headers
         return _JsonResponse(status, body, response_headers)
 
+    def upload(self, path: str, file_path: Path, *, dry_run: bool) -> dict:
+        """POST a multipart form with one CSV file, like the import page does."""
+        if self.csrf is None:
+            self.csrf = self.request("GET", "/api/auth/csrf").json()["csrf_token"]
+
+        boundary = "----dailyspend-e2e-boundary"
+        chunks: list[bytes] = [
+            (
+                f"--{boundary}\r\n"
+                'Content-Disposition: form-data; name="dry_run"\r\n\r\n'
+                f"{'true' if dry_run else 'false'}\r\n"
+            ).encode(),
+            (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="file"; filename="{file_path.name}"\r\n'
+                "Content-Type: text/csv\r\n\r\n"
+            ).encode(),
+            file_path.read_bytes(),
+            b"\r\n",
+            f"--{boundary}--\r\n".encode(),
+        ]
+        request = urllib.request.Request(
+            f"{BASE}{path}",
+            data=b"".join(chunks),
+            headers={
+                "Content-Type": f"multipart/form-data; boundary={boundary}",
+                "X-CSRFToken": self.csrf,
+            },
+            method="POST",
+        )
+        with self.opener.open(request, timeout=60) as response:
+            return json.loads(response.read().decode())
+
 
 class _JsonResponse:
     def __init__(self, status: int, body: bytes, headers) -> None:
@@ -286,6 +319,24 @@ def main() -> int:
         listing = http.request("GET", "/api/transactions?page_size=50").json()
         check("list transactions", listing["total"] >= 5, f"total={listing['total']}")
 
+        statement = ROOT / "backend" / "tests" / "fixtures" / "wechat_statement.csv"
+        preview = http.upload("/api/imports/csv", statement, dry_run=True)
+        check(
+            "import preview",
+            preview["source"] == "wechat" and preview["ready"] == 5 and preview["skipped"] == 2,
+            f"ready={preview['ready']} skipped={preview['skipped']}",
+        )
+        first_import = http.upload("/api/imports/csv", statement, dry_run=False)
+        check("import commit", first_import["imported"] == 5, f"imported={first_import['imported']}")
+        second_import = http.upload("/api/imports/csv", statement, dry_run=False)
+        check(
+            "import is idempotent",
+            second_import["imported"] == 0 and second_import["duplicates"] == 5,
+            f"imported={second_import['imported']} duplicates={second_import['duplicates']}",
+        )
+        imported_rows = http.request("GET", "/api/transactions?source=wechat&page_size=50").json()
+        check("imported rows are tagged", imported_rows["total"] == 5, f"total={imported_rows['total']}")
+
         dashboard = http.request("GET", "/api/stats/dashboard").json()
         check(
             "dashboard sections",
@@ -337,6 +388,7 @@ def main() -> int:
                 ("login", f"{BASE}/login"),
                 ("dashboard", f"{BASE}/__e2e/login"),
                 ("transactions", f"{BASE}/__e2e/login?next=/transactions"),
+                ("import", f"{BASE}/__e2e/login?next=/import"),
                 ("settings", f"{BASE}/__e2e/login?next=/settings"),
             ]
             for name, url in pages:

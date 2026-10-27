@@ -180,3 +180,30 @@ def test_transactions_are_scoped_per_user(auth_client, other_user, make_transact
 
     listing = auth_client.get("/api/transactions").get_json()
     assert listing["total"] == 0
+
+
+def test_transactions_can_be_filtered_by_source(
+    auth_client, make_transaction, user, expense_category
+):
+    manual = make_transaction(user, category=expense_category, amount="10.00")
+    imported = make_transaction(user, category=expense_category, amount="20.00")
+    imported.source = "wechat"
+    db.session.commit()
+
+    manual_only = auth_client.get("/api/transactions?source=manual").get_json()
+    assert manual_only["total"] == 1
+    assert manual_only["items"][0]["id"] == manual.id
+
+    imported_only = auth_client.get("/api/transactions?source=wechat").get_json()
+    assert imported_only["total"] == 1
+    assert imported_only["items"][0]["id"] == imported.id
+
+    assert auth_client.get("/api/transactions?source=alipay").get_json()["total"] == 0
+    assert auth_client.get("/api/transactions?source=bogus").status_code == 422
+
+
+def test_manual_rows_default_to_manual_source(auth_client, expense_category):
+    created = auth_client.post(
+        "/api/transactions", json={"amount": "1.00", "category_id": expense_category.id}
+    ).get_json()["transaction"]
+    assert created["source"] == "manual"

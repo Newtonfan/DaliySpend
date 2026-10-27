@@ -47,6 +47,8 @@ export interface TransactionAccountRef {
   type: string
 }
 
+export type TransactionSource = 'manual' | 'wechat' | 'alipay'
+
 export interface Transaction {
   id: number
   biz_date: string
@@ -60,6 +62,7 @@ export interface Transaction {
   account: TransactionAccountRef | null
   payee: string | null
   note: string | null
+  source: TransactionSource
   created_at: string | null
   updated_at: string | null
 }
@@ -122,6 +125,7 @@ export interface DashboardData {
 }
 
 export interface TransactionQuery {
+  source?: TransactionSource
   date_from?: string
   date_to?: string
   category_id?: number
@@ -141,4 +145,30 @@ export interface TransactionPayload {
   occurred_at?: string
   payee?: string | null
   note?: string | null
+}
+
+export interface ImportSampleRow {
+  line: number
+  date: string
+  amount: string
+  direction: Direction
+  payee: string | null
+  note: string | null
+  category_hint: string | null
+  method: string | null
+  external_id: string
+}
+
+export interface ImportResult {
+  source: 'wechat' | 'alipay'
+  encoding: string
+  total_rows: number
+  ready: number
+  duplicates: number
+  skipped: number
+  skipped_reasons: { line: number; reason: string }[]
+  totals: { expense: string; income: string }
+  date_range: { from: string; to: string } | null
+  sample: ImportSampleRow[]
+  imported: number | null
 }

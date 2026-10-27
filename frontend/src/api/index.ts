@@ -2,6 +2,7 @@ import type {
   Account,
   Category,
   DashboardData,
+  ImportResult,
   Page,
   PublicSettings,
   Summary,
@@ -119,6 +120,28 @@ export const statsApi = {
   },
   async summary(params: DashboardParams = {}): Promise<Summary> {
     const { data } = await http.get<Summary>('/stats/summary', { params })
+    return data
+  },
+}
+
+export interface ImportOptions {
+  default_category_id?: number | null
+  default_account_id?: number | null
+}
+
+export const importsApi = {
+  /** Uploads a statement; `dryRun` previews the result instead of writing it. */
+  async upload(file: File, dryRun: boolean, options: ImportOptions = {}): Promise<ImportResult> {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('dry_run', dryRun ? 'true' : 'false')
+    if (options.default_category_id) {
+      form.append('default_category_id', String(options.default_category_id))
+    }
+    if (options.default_account_id) {
+      form.append('default_account_id', String(options.default_account_id))
+    }
+    const { data } = await http.post<ImportResult>('/imports/csv', form)
     return data
   },
 }

@@ -7,6 +7,7 @@ import {
   NInput,
   NSelect,
   NSpace,
+  NTag,
   useDialog,
   useMessage,
   type DataTableColumns,
@@ -89,7 +90,21 @@ const columns = computed<DataTableColumns<Transaction>>(() => [
     key: 'payee',
     render: (row) =>
       h('div', [
-        h('div', { style: 'font-weight:550' }, row.payee || row.category?.name || '—'),
+        h('div', { style: 'font-weight:550' }, [
+          row.payee || row.category?.name || '—',
+          row.source !== 'manual'
+            ? h(
+                NTag,
+                {
+                  size: 'tiny',
+                  bordered: false,
+                  type: row.source === 'alipay' ? 'info' : 'success',
+                  style: 'margin-left:6px',
+                },
+                () => (row.source === 'alipay' ? '支付宝' : '微信'),
+              )
+            : null,
+        ]),
         row.note
           ? h('div', { style: 'color:#9ca3af;font-size:12px;margin-top:2px' }, row.note)
           : null,

@@ -1,4 +1,4 @@
-"""Transaction (expense / income) CRUD with filtering and pagination."""
+﻿"""Transaction (expense / income) CRUD with filtering and pagination."""
 
 from __future__ import annotations
 
@@ -49,6 +49,8 @@ def _conditions(query: TransactionQuery) -> list:
         conditions.append(Transaction.account_id == query.account_id)
     if query.direction:
         conditions.append(Transaction.direction == query.direction)
+    if query.source:
+        conditions.append(Transaction.source == query.source)
     if query.q:
         needle = f"%{query.q}%"
         conditions.append(or_(Transaction.payee.ilike(needle), Transaction.note.ilike(needle)))

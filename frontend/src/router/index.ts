@@ -27,6 +27,12 @@ const router = createRouter({
           meta: { title: '流水' },
         },
         {
+          path: 'import',
+          name: 'import',
+          component: () => import('@/views/ImportView.vue'),
+          meta: { title: '导入' },
+        },
+        {
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/SettingsView.vue'),

@@ -1,4 +1,4 @@
-"""Pydantic schemas for request payloads and query strings.
+﻿"""Pydantic schemas for request payloads and query strings.
 
 Validation failures are converted into :class:`ValidationFailed` so the API
 always answers with the same JSON error envelope.
@@ -177,6 +177,7 @@ class TransactionQuery(BaseModel):
     category_id: int | None = None
     account_id: int | None = None
     direction: Direction | None = None
+    source: Literal["manual", "wechat", "alipay"] | None = None
     q: str | None = Field(default=None, max_length=100)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=20, ge=1, le=200)

@@ -188,7 +188,11 @@ class Transaction(TimestampMixin, db.Model):
     )
     payee: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    #: Reserved for future statement imports: unique per user when present.
+    #: Where the row came from: ``manual`` / ``wechat`` / ``alipay``.
+    source: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="manual", server_default="manual"
+    )
+    #: Statement transaction id, unique per user; used to make imports idempotent.
     external_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -223,6 +227,7 @@ class Transaction(TimestampMixin, db.Model):
             ),
             "payee": self.payee,
             "note": self.note,
+            "source": self.source,
             "created_at": self.created_at.isoformat(timespec="seconds") if self.created_at else None,
             "updated_at": self.updated_at.isoformat(timespec="seconds") if self.updated_at else None,
         }
