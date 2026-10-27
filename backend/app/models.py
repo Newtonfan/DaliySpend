@@ -268,6 +268,9 @@ class Transaction(TimestampMixin, db.Model):
             "payee": self.payee,
             "note": self.note,
             "source": self.source,
+            "deleted_at": (
+                self.deleted_at.isoformat(timespec="seconds") if self.deleted_at else None
+            ),
             "created_at": self.created_at.isoformat(timespec="seconds") if self.created_at else None,
             "updated_at": self.updated_at.isoformat(timespec="seconds") if self.updated_at else None,
         }

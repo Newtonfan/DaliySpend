@@ -7,8 +7,9 @@ from math import ceil
 
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 
+from ..errors_types import NotFound
 from ..extensions import db
 from ..models import Transaction
 from ..money import to_cents
@@ -180,4 +181,78 @@ def delete_transaction(transaction_id: int):
     transaction.deleted_at = now_local()
     db.session.commit()
     return "", 204
+
+
+# ------------------------------------------------------------------------ trash
+
+
+@bp.get("/trash")
+@login_required
+def list_trash():
+    """Soft-deleted rows, newest deletion first."""
+    query = parse_query(TransactionQuery, request.args)
+    conditions = [
+        Transaction.user_id == current_user_id(),
+        Transaction.deleted_at.is_not(None),
+    ]
+    total = db.session.scalar(select(func.count(Transaction.id)).where(*conditions)) or 0
+    rows = db.session.scalars(
+        select(Transaction)
+        .where(*conditions)
+        .order_by(Transaction.deleted_at.desc(), Transaction.id.desc())
+        .limit(query.page_size)
+        .offset((query.page - 1) * query.page_size)
+    ).unique().all()
+
+    return jsonify(
+        {
+            "items": [transaction.to_dict() for transaction in rows],
+            "page": query.page,
+            "page_size": query.page_size,
+            "total": total,
+            "total_pages": ceil(total / query.page_size) if total else 0,
+        }
+    )
+
+
+def _get_deleted_transaction(transaction_id: int) -> Transaction:
+    transaction = db.session.get(Transaction, transaction_id)
+    if (
+        transaction is None
+        or transaction.user_id != current_user_id()
+        or transaction.deleted_at is None
+    ):
+        raise NotFound("回收站里没有这条流水")
+    return transaction
+
+
+@bp.post("/<int:transaction_id>/restore")
+@login_required
+def restore_transaction(transaction_id: int):
+    transaction = _get_deleted_transaction(transaction_id)
+    transaction.deleted_at = None
+    db.session.commit()
+    return jsonify({"transaction": transaction.to_dict()})
+
+
+@bp.delete("/<int:transaction_id>/purge")
+@login_required
+def purge_transaction(transaction_id: int):
+    transaction = _get_deleted_transaction(transaction_id)
+    db.session.delete(transaction)
+    db.session.commit()
+    return "", 204
+
+
+@bp.post("/trash/empty")
+@login_required
+def empty_trash():
+    removed = db.session.execute(
+        delete(Transaction).where(
+            Transaction.user_id == current_user_id(),
+            Transaction.deleted_at.is_not(None),
+        )
+    ).rowcount
+    db.session.commit()
+    return jsonify({"removed": int(removed or 0)})
 

@@ -384,6 +384,17 @@ def main() -> int:
             deleted = http.request("DELETE", f"/api/transactions/{transaction_id}")
             check("delete transaction", deleted.status == 204)
 
+            trash = http.request("GET", "/api/transactions/trash").json()
+            check("trash lists the deleted row", trash["total"] >= 1, f"total={trash['total']}")
+            restored = http.request("POST", f"/api/transactions/{transaction_id}/restore")
+            check("restore from trash", restored.status == 200)
+            trash_after = http.request("GET", "/api/transactions/trash").json()
+            check(
+                "restored row left the trash",
+                trash_after["total"] == trash["total"] - 1,
+                f"total={trash_after['total']}",
+            )
+
         index = http.request("GET", "/", raw=True)
         html = index[1].decode()
         check("spa index served", index[0] == 200 and 'id="app"' in html)
@@ -404,6 +415,7 @@ def main() -> int:
                 ("login", f"{BASE}/login"),
                 ("dashboard", f"{BASE}/__e2e/login"),
                 ("transactions", f"{BASE}/__e2e/login?next=/transactions"),
+                ("trash", f"{BASE}/__e2e/login?next=/trash"),
                 ("budgets", f"{BASE}/__e2e/login?next=/budgets"),
                 ("import", f"{BASE}/__e2e/login?next=/import"),
                 ("settings", f"{BASE}/__e2e/login?next=/settings"),

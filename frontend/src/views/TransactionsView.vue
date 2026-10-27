@@ -263,6 +263,7 @@ onMounted(async () => {
         <p class="page-subtitle">记录每一笔支出与收入，可按日期、分类、账户和关键字筛选</p>
       </div>
       <n-space>
+        <n-button text @click="$router.push('/trash')">回收站</n-button>
         <n-button @click="downloadCsv">导出 CSV</n-button>
         <n-button type="primary" @click="openCreate">记一笔</n-button>
       </n-space>

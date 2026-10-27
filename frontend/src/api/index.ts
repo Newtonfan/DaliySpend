@@ -105,6 +105,22 @@ export const transactionsApi = {
   async remove(id: number): Promise<void> {
     await http.delete(`/transactions/${id}`)
   },
+  /** Soft-deleted rows (recycle bin). */
+  async trash(query: TransactionQuery = {}): Promise<Page<Transaction>> {
+    const { data } = await http.get<Page<Transaction>>('/transactions/trash', { params: query })
+    return data
+  },
+  async restore(id: number): Promise<Transaction> {
+    const { data } = await http.post<{ transaction: Transaction }>(`/transactions/${id}/restore`)
+    return data.transaction
+  },
+  async purge(id: number): Promise<void> {
+    await http.delete(`/transactions/${id}/purge`)
+  },
+  async emptyTrash(): Promise<number> {
+    const { data } = await http.post<{ removed: number }>('/transactions/trash/empty')
+    return data.removed
+  },
 }
 
 export interface DashboardParams {

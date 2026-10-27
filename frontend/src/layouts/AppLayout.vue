@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { NAvatar, NButton, NDropdown, NLayout, NLayoutContent, NLayoutHeader, NMenu, NSpace } from 'naive-ui'
 import { computed, h } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
@@ -20,12 +20,17 @@ const activeKey = computed(() => (route.name as string) ?? 'dashboard')
 
 const userOptions = [
   { label: '分类与账户', key: 'settings' },
+  { label: '回收站', key: 'trash' },
   { label: '退出登录', key: 'logout' },
 ]
 
 async function onUserAction(key: string) {
   if (key === 'settings') {
     router.push('/settings')
+    return
+  }
+  if (key === 'trash') {
+    router.push('/trash')
     return
   }
   if (key === 'logout') {
